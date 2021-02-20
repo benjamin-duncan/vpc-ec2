@@ -10,3 +10,5 @@ services:
     tty: true
     ports:
       - 8000:8000
+    environment:
+      HELLO_WORLD: "Hello, World!"

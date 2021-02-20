@@ -103,7 +103,12 @@ class VpcEc2Stack(core.Stack):
             "App",
             image=ecs.ContainerImage.from_asset("./app"),
             memory_limit_mib=512,
+            environment={
+                "HELLO_WORLD": "Hello, world!"
+            }
         ).add_port_mappings(ecs.PortMapping(container_port=8000, host_port=8000))
+
+
 
         app_service = ecs_patterns.NetworkLoadBalancedFargateService(
             self,
