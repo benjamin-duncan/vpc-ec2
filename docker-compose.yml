@@ -1,0 +1,12 @@
+version: '3.7'
+
+services:
+  web:
+    build: ./app/
+    expose: 
+      - 8000
+    volumes:
+      - ./app/:/app/
+    tty: true
+    ports:
+      - 8000:8000
