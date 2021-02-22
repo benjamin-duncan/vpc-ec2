@@ -7,6 +7,7 @@ from aws_cdk import (
     aws_secretsmanager as secretsmanager,
     aws_ecs as ecs,
     aws_ecs_patterns as ecs_patterns,
+    aws_elasticloadbalancingv2 as elbv2,
     core
 )
 
@@ -17,24 +18,89 @@ class VpcEc2Stack(core.Stack):
 
         vpc = ec2.Vpc(
             self,
-            "testVPC",
-            cidr="10.0.0.0/16",
-            nat_gateways=0,
+            "VPC",
             max_azs=2,
+            # cidr="10.30.0.0/16",
+            nat_gateways=0,
             subnet_configuration=[
                 ec2.SubnetConfiguration(
                     subnet_type=ec2.SubnetType.PUBLIC,
-                    name="Public",
+                    name="Public1",
                     cidr_mask=24
-                ),
-                ec2.SubnetConfiguration(
-                    subnet_type=ec2.SubnetType.ISOLATED,
-                    name="Isolated1a",
-                    cidr_mask=24,
-                ),
-            ]
+                )]
+                # ec2.SubnetConfiguration(
+                #     subnet_type=ec2.SubnetType.PUBLIC,
+                #     name="Public2",
+                #     cidr_mask=24
+                # ),
+
+            #     ec2.SubnetConfiguration(
+            #         subnet_type=ec2.SubnetType.ISOLATED,
+            #         name="Isolated1a",
+            #         cidr_mask=24,
+            #     ),
+            # ]
         )
 
+        cluster = ecs.Cluster(self, "Cluster", vpc=vpc)
+
+        cluster.add_capacity("ASG", instance_type = ec2.InstanceType("t2.micro"),key_name="NewKP")
+
+        cluster_sg = ec2.SecurityGroup(
+            self,
+            "ClusterSG",
+            vpc=vpc,
+            allow_all_outbound=True
+        )
+
+        cluster_sg.add_ingress_rule(ec2.Peer.any_ipv4(),ec2.Port.tcp(22),"SSH")
+        cluster.connections.add_security_group(cluster_sg)
+
+        task = ecs.Ec2TaskDefinition(self,"TaskDefinition",) # network_mode="awsvpc")
+
+        container = task.add_container(
+            "App",
+            image=ecs.ContainerImage.from_asset("./app"),
+            memory_limit_mib=256,
+            environment={
+                "HELLO_WORLD": "Hello, world!"
+            }
+        )
+
+        port_mapping = ecs.PortMapping(
+            container_port = 8000,
+            host_port = 0,
+            protocol=ecs.Protocol.TCP
+        )
+
+        container.add_port_mappings(port_mapping)
+
+        service = ecs.Ec2Service(
+            self,
+            "Service",
+            task_definition=task,
+            # assign_public_ip=True,
+            cluster=cluster,
+
+        )
+
+        alb = elbv2.ApplicationLoadBalancer(self, "LB",vpc=vpc,internet_facing=True)
+
+        listener = alb.add_listener("Listener",port=80,open=True)
+
+        health_check = elbv2.HealthCheck(
+            interval = core.Duration.seconds(60),
+            path="/health",
+            timeout = core.Duration.seconds(5)
+        )
+
+        listener.add_targets(
+            "ECS",
+            port=80,
+            targets=[service],
+            health_check=health_check
+        )
+"""
         role = iam.Role(
             self,
             "InstanceSSM",
@@ -48,6 +114,8 @@ class VpcEc2Stack(core.Stack):
             storage=ec2.AmazonLinuxStorage.GENERAL_PURPOSE
         )
 
+
+        ecs_linux2 = ecs.MachineImageType.AMAZON_LINUX_2
         security_group = ec2.SecurityGroup(
             self,
             "SecurityGroup",
@@ -57,7 +125,11 @@ class VpcEc2Stack(core.Stack):
 
         security_group.add_ingress_rule(ec2.Peer.any_ipv4(),ec2.Port.tcp(22),"SSH")
 
+        user_data = ec2.UserData.for_linux()
+        user_data.add_commands(
+            "yum install -y aws-cli",
 
+        )
         instance = ec2.Instance(
             self,
             "Instance",
@@ -67,7 +139,8 @@ class VpcEc2Stack(core.Stack):
             role=role,
             key_name="NewKP",
             security_group=security_group,
-            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC)
+            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
+            user_data=user_data,
         )
 
         db_secret = secretsmanager.Secret(
@@ -94,9 +167,9 @@ class VpcEc2Stack(core.Stack):
 
 
         )
+"""
 
-
-        cluster = ecs.Cluster(self, "Cluster", vpc=vpc)
+"""         
         task = ecs.FargateTaskDefinition(self, "TaskDefinition")
 
         task.add_container(
@@ -109,13 +182,11 @@ class VpcEc2Stack(core.Stack):
         ).add_port_mappings(ecs.PortMapping(container_port=8000, host_port=8000))
 
 
-
         app_service = ecs_patterns.NetworkLoadBalancedFargateService(
             self,
             "Service",
             service_name="django-service",
             cluster=cluster,
-            # cloud_map_options=ecs.CloudMapOptions(name="frontend"),
             cpu=256,  # Default is 256
             desired_count=1,  # Default is 1
             task_definition=task,
@@ -128,3 +199,4 @@ class VpcEc2Stack(core.Stack):
         app_service.service.connections.allow_from_any_ipv4(
             ec2.Port.tcp(8000),"django"
         )
+"""
