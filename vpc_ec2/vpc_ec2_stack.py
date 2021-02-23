@@ -27,12 +27,12 @@ class VpcEc2Stack(core.Stack):
                     subnet_type=ec2.SubnetType.PUBLIC,
                     name="Public1",
                     cidr_mask=24
+                ),
+                ec2.SubnetConfiguration(
+                    subnet_type=ec2.SubnetType.ISOLATED,
+                    name="Isolated1",
+                    cidr_mask=24
                 )]
-                # ec2.SubnetConfiguration(
-                #     subnet_type=ec2.SubnetType.PUBLIC,
-                #     name="Public2",
-                #     cidr_mask=24
-                # ),
 
             #     ec2.SubnetConfiguration(
             #         subnet_type=ec2.SubnetType.ISOLATED,
@@ -42,15 +42,58 @@ class VpcEc2Stack(core.Stack):
             # ]
         )
 
-        cluster = ecs.Cluster(self, "Cluster", vpc=vpc)
+        db_secret = secretsmanager.Secret(
+            self,
+            "DBSecret",
+            secret_name="dbsecret",
+            generate_secret_string=secretsmanager.SecretStringGenerator(
+                secret_string_template=json.dumps({"username": "postgres"}),
+                exclude_punctuation=True,
+                include_space=False,
+                generate_string_key="password"
+            )
+        )
+        rds_sg = ec2.SecurityGroup(
+            self,
+            "RdsSG",
+            vpc=vpc,
+            allow_all_outbound=False
+        )
 
-        cluster.add_capacity("ASG", instance_type = ec2.InstanceType("t2.micro"),key_name="NewKP")
+        rds_sg.add_egress_rule(ec2.Peer.any_ipv4(),ec2.Port.tcp(5432),"Postgres")
+        rds_sg.add_ingress_rule(ec2.Peer.any_ipv4(),ec2.Port.tcp(5432),"Postgres")
+
+        database = rds.DatabaseInstance(
+            self,
+            "Database",
+            engine=rds.DatabaseInstanceEngine.postgres(version=rds.PostgresEngineVersion.VER_12_4),
+            instance_type=ec2.InstanceType("t2.micro"),
+            vpc = vpc,
+            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.ISOLATED),
+            credentials=rds.Credentials.from_secret(db_secret),
+            security_groups=[rds_sg]
+            
+        )
+
+        cluster = ecs.Cluster(
+            self,
+            "Cluster", 
+            vpc=vpc,
+        )
+
+
+        cluster.add_capacity(
+            "ASG",
+            instance_type = ec2.InstanceType("t2.micro"),
+            key_name="NewKP",
+            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC)
+        )
 
         cluster_sg = ec2.SecurityGroup(
             self,
             "ClusterSG",
             vpc=vpc,
-            allow_all_outbound=True
+            allow_all_outbound=True,
         )
 
         cluster_sg.add_ingress_rule(ec2.Peer.any_ipv4(),ec2.Port.tcp(22),"SSH")
@@ -63,7 +106,15 @@ class VpcEc2Stack(core.Stack):
             image=ecs.ContainerImage.from_asset("./app"),
             memory_limit_mib=256,
             environment={
-                "HELLO_WORLD": "Hello, world!"
+                "HELLO_WORLD": "Hello, world!",
+                "DB_NAME": "app",
+                "DB_ENGINE": "django.db.backends.postgresql",
+                "DB_HOST": database.db_instance_endpoint_address,
+                "DB_PORT": database.db_instance_endpoint_port,
+                "DB_USERNAME": db_secret.secret_value_from_json("username").to_string(),
+                "DB_PASSWORD": db_secret.secret_value_from_json("password").to_string(),
+                "DJANGO_DEBUG": "False",
+                "DJANGO_ALLOWED_HOSTS": ''
             }
         )
 
@@ -81,6 +132,8 @@ class VpcEc2Stack(core.Stack):
             task_definition=task,
             # assign_public_ip=True,
             cluster=cluster,
+            min_healthy_percent=0,
+            max_healthy_percent=100,
 
         )
 
@@ -100,6 +153,9 @@ class VpcEc2Stack(core.Stack):
             targets=[service],
             health_check=health_check
         )
+
+
+
 """
         role = iam.Role(
             self,
@@ -143,30 +199,7 @@ class VpcEc2Stack(core.Stack):
             user_data=user_data,
         )
 
-        db_secret = secretsmanager.Secret(
-            self,
-            "DBSecret",
-            secret_name="db-secret",
-            generate_secret_string=secretsmanager.SecretStringGenerator(
-                secret_string_template=json.dumps({"username": "postgres"}),
-                exclude_punctuation=True,
-                include_space=False,
-                generate_string_key="password"
-            )
-        )
 
-        database = rds.DatabaseInstance(
-            self,
-            "Database",
-            engine=rds.DatabaseInstanceEngine.postgres(version=rds.PostgresEngineVersion.VER_12_4),
-            instance_type=ec2.InstanceType("t2.micro"),
-            vpc = vpc,
-            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.ISOLATED),
-            credentials=rds.Credentials.from_secret(db_secret)
-            
-
-
-        )
 """
 
 """         
