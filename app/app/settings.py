@@ -28,7 +28,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = '5&@m_$hf4ri1fyjugrfror!=h!%bzaihg&uejda5r=g*fsg8lq'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get("DJANGO_DEBUG",True)==True
 
 ALLOWED_HOSTS = ['*']
 
@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'app',
 ]
 
 MIDDLEWARE = [
@@ -80,8 +81,12 @@ WSGI_APPLICATION = 'app.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': os.environ.get("DB_ENGINE","django.db.backends.sqlite3"),
+        'NAME': os.environ.get("DB_NAME","db.sqlite"),
+        'USER': os.environ.get("DB_USERNAME",""),
+        'PASSWORD': os.environ.get("DB_PASSWORD",""),
+        'HOST': os.environ.get("DB_HOST",None),
+        'PORT': os.environ.get("DB_PORT",None),
     }
 }
 
