@@ -1,0 +1,1 @@
+Project adapted from https://github.com/gonzalo123/clock in order to set up basic functionality for Redis, Channels, Celery and Docker.
