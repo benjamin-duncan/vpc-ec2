@@ -90,7 +90,7 @@ class VpcEc2Stack(core.Stack):
 
         health_check = elbv2.HealthCheck(
             interval = core.Duration.seconds(60),
-            path="/health",
+            path="/health/",
             timeout = core.Duration.seconds(5)
         )
 
