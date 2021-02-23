@@ -1,0 +1,58 @@
+version: '3.7'
+
+services:
+  redis:
+    image: redis
+  web:
+    build: .
+    command: /bin/bash ./docker-entrypoint.sh
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - "redis"
+    expose:
+      - 8000
+    env_file:
+      - .env.dev
+    environment:
+      ENVIRONMENT: prod
+      REDIS_HOST: redis
+    volumes:
+      - /usr/src/app
+  celery:
+    build: .
+    command: celery -A tweets worker --uid=nobody --gid=nogroup --loglevel=warning -E
+    depends_on:
+      - "redis"
+    env_file:
+      - .env.dev
+    environment:
+      ENVIRONMENT: prod
+      REDIS_HOST: redis
+    volumes:
+    - /usr/src/app
+  cron:
+    build: .
+    command: celery -A tweets beat
+    depends_on:
+      - "redis"
+    environment:
+      ENVIRONMENT: prod
+      REDIS_HOST: redis
+    volumes:
+    - /usr/src/app
+  tweets:
+    build: .
+    command: python tweet-stream.py
+    volumes:
+    - /usr/src/app
+  nginx:
+    build: ./nginx
+    ports:
+      - 1337:80
+    depends_on:
+      - web

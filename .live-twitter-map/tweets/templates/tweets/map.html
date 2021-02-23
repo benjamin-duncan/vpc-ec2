@@ -1,0 +1,104 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+	
+	<title>Test4</title>
+
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	
+	<!-- <link rel="shortcut icon" type="image/x-icon" href="docs/images/favicon.ico" /> -->
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
+
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+        }
+        html, body, #mapid {
+            height: 100%;
+            width: 100%;
+        }
+        #Reset {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 10px;
+            z-index: 400;
+            z-index:400;
+        }
+    </style>
+
+	
+</head>
+<body>
+
+
+
+<div id="mapid"></div>
+<button id="Reset" value="Reset Markers" onclick="resetMarkers()" class="btnStyle span3">Reset Markers</button>
+
+<script>
+    var markers = Array();
+	var mymap = L.map('mapid').setView([54.5, -3], 6);
+
+	L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
+		maxZoom: 18,
+		attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
+			'<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+			'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+		id: 'mapbox/streets-v11',
+		tileSize: 512,
+		zoomOffset: -1
+	}).addTo(mymap);
+
+
+  
+    const chatSocket = new WebSocket(
+            'ws://'
+            + window.location.host
+            + '/ws/tweets/'
+        );
+
+    chatSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        const datap = JSON.parse(data.message);
+        // document.querySelector('#tweet-log').value += (data.message + '\n'); 
+
+        // REMOVED - TWITTER DOES NOT SUPPORT CORS FOR EMBEDDED TWEET API
+
+        // var url = "https://publish.twitter.com/oembed/https://twitter.com/i/web/status/"+ datap[0].fields.tweet_id
+        // var response = fetch(url,{
+        //     datatype: 'jsonp',
+        //     headers: {
+        //         'Access-Control-Allow-Origin': '*'
+        //     }
+        // })
+        console.log(datap[0])
+
+        console.log(datap[0].fields.lat)
+        console.log(data.message)
+        var marker = L.marker([datap[0].fields.lon, datap[0].fields.lat])
+        marker.addTo(mymap).bindPopup(datap[0].fields.html);
+        markers.push(marker)
+    };
+
+    chatSocket.onclose = function(e) {
+        console.error('Chat socket closed unexpectedly');
+    };
+
+    function resetMarkers() {
+        for(i=0;i<markers.length;i++) {
+            mymap.removeLayer(markers[i])
+        }
+        markers = [];
+    };
+</script>
+
+
+
+</body>
+</html>
