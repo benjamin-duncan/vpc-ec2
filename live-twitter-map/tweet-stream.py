@@ -1,9 +1,9 @@
-from django.db import models
-import credentials
+
+import os
 import tweepy
 import json
 import psycopg2
-import psqldbcredentials as db
+# import psqldbcredentials as db
 import random
 import time
 # Create your models here.
@@ -66,15 +66,14 @@ if __name__ == "__main__":
         time.sleep(5)
 
         mydb = psycopg2.connect(
-            host=db.host,
-            user=db.user,
-            password=db.passwd,
-            dbname = db.database
+            host=os.getenv("DB_HOST"),
+            user=os.getenv("DB_USERNAME"),
+            password=os.getenv("DB_PASSWORD"),
+            dbname = os.getenv("DB_NAME")
             )
-
         print(mydb)
-        auth  = tweepy.OAuthHandler(credentials.CONSUMER_KEY, credentials.CONSUMER_SECRET)
-        auth.set_access_token(credentials.ACCESS_TOKEN, credentials.ACCESS_SECRET)
+        auth  = tweepy.OAuthHandler(os.getenv("CONSUMER_KEY"), os.getenv("CONSUMER_SECRET"))
+        auth.set_access_token(os.getenv("ACCESS_TOKEN"), os.getenv("ACCESS_SECRET"))
         api = tweepy.API(auth)
         region = [-7.0,49.0, 2.0,61.0]
 

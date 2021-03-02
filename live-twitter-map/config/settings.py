@@ -19,15 +19,7 @@ SECRET_KEY = os.getenv('SECRET', 'xxy$j4()$&+ajgalssld)#c2&(=masd==9!)7_4p+@siq'
 ENV = os.getenv('ENVIRONMENT', False)
 DEBUG = False if ENV else True
 
-ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS").split(" ")
-try:
-    aws_url = 'http://169.254.169.254/latest'
-    ALLOWED_HOSTS += [
-        requests.get(f'{aws_url}/meta-data/local-ipv4', timeout=0.01).text,
-        requests.get(f'{aws_url}/meta-data/local-hostname', timeout=0.01).text
-    ]
-except requests.exceptions.RequestException:
-    pass
+ALLOWED_HOSTS = ['*'] # os.environ.get("DJANGO_ALLOWED_HOSTS").split(" ")
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -78,13 +70,13 @@ ASGI_APPLICATION = "config.routing.application"
 # https://docs.djangoproject.com/en/3.0/ref/settings/#databases
 
 DATABASES = {
-    "default": {
-        "ENGINE": os.environ.get("SQL_ENGINE", "django.db.backends.sqlite3"),
-        "NAME": os.environ.get("SQL_DATABASE", os.path.join(BASE_DIR, "db.sqlite3")),
-        "USER": os.environ.get("SQL_USER", "user"),
-        "PASSWORD": os.environ.get("SQL_PASSWORD", "password"),
-        "HOST": os.environ.get("SQL_HOST", "localhost"),
-        "PORT": os.environ.get("SQL_PORT", "5432"),
+    'default': {
+        'ENGINE': os.environ.get("DB_ENGINE","django.db.backends.sqlite3"),
+        'NAME': os.environ.get("DB_NAME","db.sqlite"),
+        'USER': os.environ.get("DB_USERNAME",""),
+        'PASSWORD': os.environ.get("DB_PASSWORD",""),
+        'HOST': os.environ.get("DB_HOST",None),
+        'PORT': os.environ.get("DB_PORT",None),
     }
 }
 

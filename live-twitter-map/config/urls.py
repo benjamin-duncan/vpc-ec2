@@ -11,5 +11,6 @@ urlpatterns = [
     # path('', views.index, name='home'),
     # path('tweets/', views.index, name='home'),
     path('', views.map, name='map'),
+    path('health/',views.health),
     # path('test/', views.test, name='test')
 ]

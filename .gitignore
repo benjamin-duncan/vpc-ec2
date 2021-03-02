@@ -24,3 +24,4 @@ cdk.out/
 
 # Misc
 synth.yml
+app/

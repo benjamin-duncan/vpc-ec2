@@ -7,7 +7,6 @@ my.cnf
 .env.dev
 .env.dev.db
 static/
-entrypoint.sh
 scratch.py
 celerybeat-schedule
 celerybeat.pid

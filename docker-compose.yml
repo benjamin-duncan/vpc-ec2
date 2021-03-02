@@ -2,13 +2,16 @@ version: '3.7'
 
 services:
   web:
-    build: ./app/
+    build: ./live-twitter-map/
     expose: 
       - 8000
     volumes:
-      - ./app/:/app/
-    tty: true
+      - ./live-twitter-map/:/app/
+    command: bash entrypoint.sh
     ports:
       - 8000:8000
     environment:
       HELLO_WORLD: "Hello, World!"
+      REDIS_HOST: "redis"
+  redis:
+    image: redis:latest

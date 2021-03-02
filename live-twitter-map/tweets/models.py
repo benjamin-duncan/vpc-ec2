@@ -11,7 +11,7 @@ class Tweet(models.Model):
     lat = models.FloatField()
     lon = models.FloatField()
     timestamp_ms = models.BigIntegerField()
-    html = models.TextField()
+    html = models.TextField(null=True)
 
     class Meta:
         db_table = "tweets" 

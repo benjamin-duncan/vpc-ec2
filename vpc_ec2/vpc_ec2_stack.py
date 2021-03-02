@@ -11,6 +11,8 @@ from aws_cdk import (
     core
 )
 
+import twitter_credentials
+
 class VpcEc2Stack(core.Stack):
 
     def __init__(self, scope: core.Construct, construct_id: str, **kwargs) -> None:
@@ -82,7 +84,7 @@ class VpcEc2Stack(core.Stack):
         )
 
 
-        cluster.add_capacity(
+        asg = cluster.add_capacity(
             "ASG",
             instance_type = ec2.InstanceType("t2.micro"),
             key_name="NewKP",
@@ -97,15 +99,28 @@ class VpcEc2Stack(core.Stack):
         )
 
         cluster_sg.add_ingress_rule(ec2.Peer.any_ipv4(),ec2.Port.tcp(22),"SSH")
-        cluster.connections.add_security_group(cluster_sg)
+        asg.add_security_group(cluster_sg)
+        # task = ecs.Ec2TaskDefinition(self,"TaskDefinition",) # network_mode="awsvpc")
+        #
+        # container = task.add_container(
+        #     "App",
+        #     image=ecs.ContainerImage.from_asset("./app"),
+        #     memory_limit_mib=256,
+        #     environment={
+        #         "HELLO_WORLD": "Hello, world!",
+        #         "DB_NAME": "app",
+        #         "DB_ENGINE": "django.db.backends.postgresql",
+        #         "DB_HOST": database.db_instance_endpoint_address,
+        #         "DB_PORT": database.db_instance_endpoint_port,
+        #         "DB_USERNAME": db_secret.secret_value_from_json("username").to_string(),
+        #         "DB_PASSWORD": db_secret.secret_value_from_json("password").to_string(),
+        #         "DJANGO_DEBUG": "False",
+        #         "DJANGO_ALLOWED_HOSTS": ''
+        #     }
+        # )
+        # container.add_port_mappings(port_mapping)
 
-        task = ecs.Ec2TaskDefinition(self,"TaskDefinition",) # network_mode="awsvpc")
-
-        container = task.add_container(
-            "App",
-            image=ecs.ContainerImage.from_asset("./app"),
-            memory_limit_mib=256,
-            environment={
+        env_vars = {
                 "HELLO_WORLD": "Hello, world!",
                 "DB_NAME": "app",
                 "DB_ENGINE": "django.db.backends.postgresql",
@@ -114,9 +129,38 @@ class VpcEc2Stack(core.Stack):
                 "DB_USERNAME": db_secret.secret_value_from_json("username").to_string(),
                 "DB_PASSWORD": db_secret.secret_value_from_json("password").to_string(),
                 "DJANGO_DEBUG": "False",
-                "DJANGO_ALLOWED_HOSTS": ''
+                "DJANGO_ALLOWED_HOSTS": '*',
+                "REDIS_HOST": "redis",
+                "REDIS_PORT": "6379",
+                "ENVIRONMENT": "prod",
             }
+
+        twitter_vars = twitter_credentials.twitter_vars
+
+        task = ecs.Ec2TaskDefinition(self,"TaskDefinition")
+
+
+
+        # redis.add_port_mappings(
+        #     ecs.PortMapping(
+        #         host_port=6379,
+        #         container_port=6379,
+        #         protocol=ecs.Protocol.TCP,
+        #     )
+        # )
+
+
+
+        # Django/Webapp container
+        django = task.add_container(
+            "Django",
+            image=ecs.ContainerImage.from_asset("./live-twitter-map"),
+            memory_limit_mib=256,
+            environment = env_vars,
+            command = ["bash", "entrypoint.sh"],
         )
+
+        #django.add_container_dependencies(redis_dependency)
 
         port_mapping = ecs.PortMapping(
             container_port = 8000,
@@ -124,13 +168,52 @@ class VpcEc2Stack(core.Stack):
             protocol=ecs.Protocol.TCP
         )
 
-        container.add_port_mappings(port_mapping)
+        django.add_port_mappings(port_mapping)
 
+        # Redis Container
+        redis = task.add_container(
+            "Redis",
+            image=ecs.ContainerImage.from_registry("redis:latest"),
+            memory_limit_mib=128,   
+            # command=["redis-server", "--bind", "redis", "--port", "6379"]
+        )
+
+        # Celery Container  
+        celery = task.add_container(
+            "Celery",
+            image=ecs.ContainerImage.from_asset("./live-twitter-map"),
+            memory_limit_mib=128,
+            environment=env_vars,
+            command=["celery","-A","tweets","worker","--uid=nobody","--gid=nogroup","--loglevel=warning","-E"]
+        )
+
+
+        # Celery Beat Schedule Container
+        celerybeat = task.add_container(
+            "CeleryBeat",
+            image=ecs.ContainerImage.from_asset("./live-twitter-map"),
+            memory_limit_mib=128,
+            environment=env_vars,
+            command=["celery","-A","tweets","beat"]
+        )
+ 
+        for container in [django,celery,celerybeat]:
+            container.add_container_dependencies(ecs.ContainerDependency(container=redis,condition=ecs.ContainerDependencyCondition.START))
+            container.add_link(container=redis)
+
+
+        # Tweet Stream Container
+        tweets = task.add_container(
+            "Tweets",
+            image=ecs.ContainerImage.from_asset("./live-twitter-map"),
+            memory_limit_mib=128,
+            environment={**twitter_vars,**env_vars},
+            command=["python","tweet-stream.py"]
+        )
         service = ecs.Ec2Service(
             self,
             "Service",
             task_definition=task,
-            # assign_public_ip=True,
             cluster=cluster,
             min_healthy_percent=0,
             max_healthy_percent=100,
@@ -138,7 +221,6 @@ class VpcEc2Stack(core.Stack):
         )
 
         alb = elbv2.ApplicationLoadBalancer(self, "LB",vpc=vpc,internet_facing=True)
-
         listener = alb.add_listener("Listener",port=80,open=True)
 
         health_check = elbv2.HealthCheck(
@@ -151,11 +233,11 @@ class VpcEc2Stack(core.Stack):
             "ECS",
             port=80,
             targets=[service],
-            health_check=health_check
+            health_check=health_check,
+            deregistration_delay=core.Duration.seconds(10),
         )
 
-
-
+        #w=elbv2.ApplicationTargetGroup
 """
         role = iam.Role(
             self,
