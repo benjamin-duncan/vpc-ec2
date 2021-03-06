@@ -15,3 +15,4 @@ celerybeat.pid
 *ecs.yml
 *v1.yml
 kubernetes/
+.env

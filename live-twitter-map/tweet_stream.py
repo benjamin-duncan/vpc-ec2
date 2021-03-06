@@ -18,30 +18,30 @@ class MyStreamListener(tweepy.StreamListener):
     def on_status(self,status):
 
         # print(".")
-        
         # t = status._json
         cursor = mydb.cursor()
-        try: 
-            # l = centre_bb(t['place']['bounding_box'])
-            # time.sleep(10)    
-            add_tweet = "INSERT INTO tweets (text,tweet_id,lon,lat,timestamp_ms) VALUES (%s,%s,%s,%s,%s)"
-            text = remove_emoji(status.text)
-            # print(status)
-            # print((text,status.id,status.timestamp_ms))
-            #print(status.place.bounding_box.coordinates
-            centre = centre_bb(status.place.bounding_box)
-            # print(centre)
-            dt  = (text,status.id,centre[0],centre[1],status.timestamp_ms)
-            try:
-                cursor.execute(add_tweet,dt)
-                mydb.commit()
-            except:
-                print("Error: tweet not added to db")
-            finally:
-                print(dt)
-            # cursor.commit()
-        except:
-            print('no location')
+        #try: 
+        # l = centre_bb(t['place']['bounding_box'])
+        # time.sleep(10)    
+        add_tweet = "INSERT INTO tweets (text,tweet_id,lon,lat,timestamp_ms) VALUES (%s,%s,%s,%s,%s)"
+        text = remove_emoji(status.text)
+        # print(status)
+        # print((text,status.id,status.timestamp_ms))
+        #print(status.place.bounding_box.coordinates
+        centre = centre_bb(status.place.bounding_box)
+        # print(centre)
+        dt  = (text,status.id,centre[0],centre[1],status.timestamp_ms)
+
+        #try:
+        cursor.execute(add_tweet,dt)
+        mydb.commit()
+        #except:
+        #    print("Error: tweet not added to db")
+        #finally:
+        #    print(dt)
+        # cursor.commit()
+        #except:
+        #    print('no location')
 
 
 
@@ -61,16 +61,21 @@ def remove_emoji(text): # Removes emoji from text for database compatability
     else:
         return None
 
+def _connect():
+    db = psycopg2.connect(
+        host=os.getenv("DB_HOST"),
+        user=os.getenv("DB_USERNAME"),
+        password=os.getenv("DB_PASSWORD"),
+        dbname = os.getenv("DB_NAME")
+        )
+    return db
 if __name__ == "__main__":
     while True:
         time.sleep(5)
-
-        mydb = psycopg2.connect(
-            host=os.getenv("DB_HOST"),
-            user=os.getenv("DB_USERNAME"),
-            password=os.getenv("DB_PASSWORD"),
-            dbname = os.getenv("DB_NAME")
-            )
+        try:
+            mydb = _connect()
+        except:
+            print("Database loading...")
         print(mydb)
         auth  = tweepy.OAuthHandler(os.getenv("CONSUMER_KEY"), os.getenv("CONSUMER_SECRET"))
         auth.set_access_token(os.getenv("ACCESS_TOKEN"), os.getenv("ACCESS_SECRET"))
