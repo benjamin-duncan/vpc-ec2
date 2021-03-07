@@ -12,6 +12,6 @@ urlpatterns = [
     # path('tweets/', views.index, name='home'),
     path('api', views.map, name='map'),
     path('health/',views.health),
-    path('startup/',views.startup),
+    path('api/startup/',views.startup),
     # path('test/', views.test, name='test')
 ]

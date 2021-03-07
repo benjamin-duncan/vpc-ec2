@@ -30,7 +30,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'channels',
     'tweets',
-    'rest-framework'
+    'rest_framework',
 ]
 
 MIDDLEWARE = [

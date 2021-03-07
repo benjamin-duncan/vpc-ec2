@@ -4,7 +4,8 @@ COPY requirements.txt /app
 RUN apt-get update &&\
 apt-get install -y python-dev &&\ 
 apt-get clean
-RUN pip3 install -r requirements.txt
+RUN python -m pip install --upgrade pip
+RUN pip install -r requirements.txt
 COPY entrypoint.sh/ /
 COPY . /app
 ENV PYTHONUNBUFFERED 1

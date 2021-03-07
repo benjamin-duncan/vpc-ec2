@@ -16,3 +16,4 @@ celerybeat.pid
 *v1.yml
 kubernetes/
 .env
+db.sqlite
