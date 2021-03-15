@@ -6,9 +6,23 @@ class StartupSerializer(serializers.ModelSerializer):
         return {
             "id": instance.id,
             "text": instance.text,
-            "tweet_id": instance.tweet_id,
+            "tweet_id": str(instance.tweet_id),
             "lat": instance.lat,
             "lon": instance.lon,
-            "timestamp_ms": instance.timestamp_ms,
-            "html": redis.get(f"html_{instance.id}"),
+            "timestamp_ms": str(instance.timestamp_ms),
+        }
+
+class StatsSerializer(serializers.Serializer):
+    def to_representation(self,instance):
+        return {
+            "total": instance["total"],
+            "day": instance["day"],
+            "hour": instance["hour"],
+            "minute": instance["minute"]
+        }
+
+class GraphSerializer(serializers.Serializer):
+    def to_representation(self,instance):
+        return {
+            instance
         }

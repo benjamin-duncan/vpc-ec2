@@ -13,5 +13,7 @@ urlpatterns = [
     path('api', views.map, name='map'),
     path('health/',views.health),
     path('api/startup/',views.startup),
+    path('api/stats/',views.stats),
+    path('api/graph/',views.graph),
     # path('test/', views.test, name='test')
 ]

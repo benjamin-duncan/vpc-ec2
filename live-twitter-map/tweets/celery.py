@@ -18,7 +18,7 @@ app.autodiscover_tasks()
 
 @app.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
-    sender.add_periodic_task(10, tweet_beat.s(), name='beat every 1 seconds')
+    sender.add_periodic_task(1, tweet_beat.s(), name='beat every 1 seconds')
 
 
 @app.task
@@ -47,19 +47,6 @@ def tweet_beat(group=TweetsConsumer.GROUP, event='text_message'):
         redis.set('max_id_chk',max_id)
 
         for message in messages:
-
-
-            try:      # Get HTML for embedding tweet
-                url = "https://publish.twitter.com/oembed?url=https://twitter.com/i/status/" + str(message.tweet_id)
-                response = requests.get(url)
-                html = json.loads(response.text)['html']
-                setattr(message,'html',html)
-                redis.set(f"html_{message.id}", html)   
-            # message.save()
-            # Send to consumers
-            except:
-                print(f"Message Error...\n {message} \n {response} \n {html}")
-                continue
             async_to_sync(channel_layer.group_send)(group, {'type': event, 'message': serializers.serialize("json",[message,])})
 
 
